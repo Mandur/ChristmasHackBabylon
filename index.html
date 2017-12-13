@@ -38,14 +38,20 @@
 
     <canvas id="renderCanvas"></canvas>
     <script>
-        function checkInput(myScene){
+        var lastgift="";
+        function checkInput(myScene,VRHelper){
             var xhttp = new XMLHttpRequest();
             xhttp.open("GET", "https://xmaslogic.azurewebsites.net/api/giftData?code=aY2t7IlUmcqe2sD31JvY/QS2SJ1GLI3Qa0rS1ZuK1LK32S91a1w1rw==");
             xhttp.onreadystatechange = function () {
                 if(xhttp.readyState === XMLHttpRequest.DONE && xhttp.status === 200) {
                     var response = JSON.parse(xhttp.responseText);
-                    console.log(response.gift.name);
-                    getGifs(response.gift.name ,myScene );
+                    //if(lastgift!=response.gift.name){
+                        console.log("new item");
+                        lastgift=response.gift.name;
+                        getGifs(response.gift.name ,myScene ,VRHelper);
+                    //}else{
+                        console.log("old item...");
+                    //}
 
                 }
                 };
@@ -54,15 +60,13 @@
             var response = JSON.parse(xhttp.responseText);
         }
 
-        function setScene(scene, gifUrl){
-            console.log(gifUrl);
+        function setScene(scene, gifUrl,VRHelper){
             //Creation of a repeated textured material
             var materialPlane = new BABYLON.StandardMaterial(gifUrl, scene);
-            console.log("before");
+            
 
             materialPlane.diffuseTexture = new BABYLON.VideoTexture(gifUrl, [gifUrl.original.mp4,gifUrl.original.webm],scene,true,true);
             materialPlane.backFaceCulling = false;//Allways show the front and the back of an element
-            console.log("here");
             //Creation of a plane
 
             var axis = new BABYLON.Vector3(1, 0, 0);
@@ -72,18 +76,20 @@
             var plane = BABYLON.Mesh.CreatePlane(gifUrl, 2, scene);
             plane.material = materialPlane;
             plane.rotationQuaternion = quaternion;
-            console.log("here2");
+            console.log("           "+VRHelper._webVRCamera.devicePosition);
+            plane.position=VRHelper._WebVRCamera.devicePosition-new Vector3(0,-100,-100) ;
+
+
         }
 
-        function getGifs(input,myScene)
+        function getGifs(input,myScene,VRHelper)
         {
             var xhttp = new XMLHttpRequest();
             xhttp.open("GET", "http://api.giphy.com/v1/gifs/search?q="+input+"&api_key=TS6cdhSEnqvy4f4d6jlq9DNLS4fzNVSW&limit=5");
             xhttp.onreadystatechange = function () {
                 if(xhttp.readyState === XMLHttpRequest.DONE && xhttp.status === 200) {
                     var gif = JSON.parse(xhttp.responseText);
-                    console.log(gif.data[0]);
-                    setScene(myScene,gif.data[0].images );
+                    setScene(myScene,gif.data[0].images,VRHelper );
 
                 }
                 };
@@ -104,10 +110,63 @@
                 var scene = new BABYLON.Scene(engine);
                 var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
                 VRHelper = scene.createDefaultVRExperience();
-                console.log("VR up");
-                setInterval(function(){checkInput(scene)},5000);
+                setInterval(function(){checkInput(scene,VRHelper)},10000);
 
+                BABYLON.SceneLoader.ImportMesh("", "./meshes/", "xmastree2.glb", scene, function (christmasObj) {
+                    christmasObj.forEach(function(mesh, index) {
+                    mesh.scalingDeterminant  = 2;
+                    mesh.locallyTranslate(new BABYLON.Vector3(0,0.2,1));
+                });
+                });
                 //createSky();
+                // SNOW 
+		var fountain = BABYLON.Mesh.CreateBox("fountain", .1, scene);
+		fountain.position.y = 100;
+		fountain.isVisible = false;
+
+		var particleSystem = new BABYLON.ParticleSystem("particles", 1500, scene, null, true);
+		particleSystem.particleTexture = new BABYLON.Texture("textures/snowflake.png", scene);
+		scene.registerBeforeRender(() => {
+			particleSystem.startSpriteCellID = Math.round(Math.random() * 3 - 1);
+		});
+		particleSystem.startSpriteCellID = 0;
+		particleSystem.endSpriteCellID = 0;
+		particleSystem.spriteCellHeight = 512;
+		particleSystem.spriteCellWidth = 512;
+
+		// Where the particles come from
+		particleSystem.emitter = fountain; // the starting object, the emitter
+		particleSystem.minEmitBox = new BABYLON.Vector3(-100, 0, -100); // Starting all from
+		particleSystem.maxEmitBox = new BABYLON.Vector3(100, 0, 100); // To...
+
+		particleSystem.minSize = 0.5;
+		particleSystem.maxSize = 4;
+
+		particleSystem.minLifeTime = 1.2;
+		particleSystem.maxLifeTime = 1.6;
+
+		particleSystem.emitRate = 150;
+
+		// Blend mode : BLENDMODE_ONEONE, or BLENDMODE_STANDARD
+		particleSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_ONEONE;
+
+		particleSystem.gravity = new BABYLON.Vector3(0, -98, 0);
+		particleSystem.direction1 = new BABYLON.Vector3(5.5, -1, 5.5);
+		particleSystem.direction2 = new BABYLON.Vector3(-5.5, -1, -5.5);
+
+		particleSystem.minAngularSpeed = 0;
+		particleSystem.maxAngularSpeed = Math.PI;
+
+		// Speed
+		particleSystem.minEmitPower = 1;
+		particleSystem.maxEmitPower = 10;
+		particleSystem.updateSpeed = 0.005;
+
+	
+
+		// Start the particle system
+		particleSystem.start();
+
 
                 return scene;
             }
@@ -126,7 +185,6 @@
 
             var scene = createScene();
             engine.runRenderLoop(function () {
-                console.log("rendering");
                 scene.render();
 
             });
