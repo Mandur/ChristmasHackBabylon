@@ -38,6 +38,60 @@
 
     <canvas id="renderCanvas"></canvas>
     <script>
+        function checkInput(myScene){
+            var xhttp = new XMLHttpRequest();
+            xhttp.open("GET", "https://xmaslogic.azurewebsites.net/api/giftData?code=aY2t7IlUmcqe2sD31JvY/QS2SJ1GLI3Qa0rS1ZuK1LK32S91a1w1rw==");
+            xhttp.onreadystatechange = function () {
+                if(xhttp.readyState === XMLHttpRequest.DONE && xhttp.status === 200) {
+                    var response = JSON.parse(xhttp.responseText);
+                    console.log(response.gift.name);
+                    getGifs(response.gift.name ,myScene );
+
+                }
+                };
+            xhttp.send();
+
+            var response = JSON.parse(xhttp.responseText);
+        }
+
+        function setScene(scene, gifUrl){
+            console.log(gifUrl);
+            //Creation of a repeated textured material
+            var materialPlane = new BABYLON.StandardMaterial(gifUrl, scene);
+            console.log("before");
+
+            materialPlane.diffuseTexture = new BABYLON.VideoTexture(gifUrl, [gifUrl.original.mp4,gifUrl.original.webm],scene,true,true);
+            materialPlane.backFaceCulling = false;//Allways show the front and the back of an element
+            console.log("here");
+            //Creation of a plane
+
+            var axis = new BABYLON.Vector3(1, 0, 0);
+            var angle = -Math.PI ;
+            var quaternion = new BABYLON.Quaternion.RotationAxis(axis, angle);
+            
+            var plane = BABYLON.Mesh.CreatePlane(gifUrl, 2, scene);
+            plane.material = materialPlane;
+            plane.rotationQuaternion = quaternion;
+            console.log("here2");
+        }
+
+        function getGifs(input,myScene)
+        {
+            var xhttp = new XMLHttpRequest();
+            xhttp.open("GET", "http://api.giphy.com/v1/gifs/search?q="+input+"&api_key=TS6cdhSEnqvy4f4d6jlq9DNLS4fzNVSW&limit=5");
+            xhttp.onreadystatechange = function () {
+                if(xhttp.readyState === XMLHttpRequest.DONE && xhttp.status === 200) {
+                    var gif = JSON.parse(xhttp.responseText);
+                    console.log(gif.data[0]);
+                    setScene(myScene,gif.data[0].images );
+
+                }
+                };
+            xhttp.send();
+
+            var response = JSON.parse(xhttp.responseText);
+            log.info(response);
+        }
 
         window.addEventListener('DOMContentLoaded', function () {
             var canvas = document.getElementById('renderCanvas');
@@ -46,26 +100,38 @@
             var engine = new BABYLON.Engine(canvas, true);
             // createScene function that creates and return the scene
             var createScene = function () {
-
                 // create a basic BJS Scene object 
                 var scene = new BABYLON.Scene(engine);
-
                 var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
-
                 VRHelper = scene.createDefaultVRExperience();
                 console.log("VR up");
+                setInterval(function(){checkInput(scene)},5000);
+
+                //createSky();
 
                 return scene;
             }
 
+            var createSky = function () {
+                var skybox = BABYLON.Mesh.CreateBox("skyBox", 100.0, scene);
+                var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/skybox", scene);
+                skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.disableLighting = true;
+                skybox.material = skyboxMaterial;
+            };
+
             var scene = createScene();
-
-
             engine.runRenderLoop(function () {
-
+                console.log("rendering");
                 scene.render();
 
             });
+            
+           
 
         });
     </script>
